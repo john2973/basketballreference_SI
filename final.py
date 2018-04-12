@@ -4,6 +4,7 @@ import json
 import sqlite3
 
 CACHE_FNAME = 'basketball.json'
+DBNAME = 'basketball.db'
 
 try:
     cache_file = open(CACHE_FNAME, 'r')
@@ -36,126 +37,46 @@ def make_requests_using_cache(url):
         return CACHE_DICTION[unique_ident]
 
 class BasketballPlayers:
-    def __init__(self, name, height, weight, games, points, rebounds, assists, team):
+    def __init__(self, name, start_year, end_year, position, height, weight):
         self.name = name
+        self.startyear = start_year
+        self.endyear = end_year
+        self.position = position
         self.height = height
         self.weight = weight
-        self.games = games
-        self.points = points
-        self.rebounds = rebounds
-        self.assists = assists
-        self.team = team
 
     def init_from_details_url(self, details_url):
         page_text = make_requests_using_cache(details_url)
         page_soup = BeautifulSoup(page_text, 'html.parser')
 
-        team_info = page_soup.find(class_ = 'teams')
-        find_all_team_info = team_info.find_all('p')
+        stats = []
+        stats_div = page_soup.find(class_ = 'p1')
+        stats_num = stats_div.find_all('p')
+        for item in stats_num:
+            get_stats = item.text.strip()
+            stats.append(get_stats)
 
-        team_info = []
-        for item in find_all_team_info:
-            get_team_stats = item.text.strip()
-            team_info.append(get_team_stats)
+        career_games = stats[1]
+        career_points = stats[3]
+        career_rebounds = stats[5]
+        career_assists = stats[7]
 
-        team_record = team_info[2]
-        team_coach = team_info[5]
-        team_arena = team_info[11]
+        self.gamesplayed = career_games
+        self.totalpoints = career_points
+        self.totalrebounds = career_rebounds
+        self.totalassists = career_assists
 
-        find_team_name = page_soup.find(id = 'meta')
-        get_team_name = find_team_name.find('h1')
-        last_find = get_team_name.find_all('span')
-
-        team_name_list = []
-        for item in last_find:
-            specific_team_name = item.text.strip()
-            team_name_list.append(specific_team_name)
-
-        final_team_info = team_name_list[1]
-
-
-
-
-        self.team_record = team_record
-        self.team_coach = team_coach
-        self.team_arena = team_arena
-        self.team_name = final_team_info
 
 
     def __str__(self):
-        return self.name + ' Height: ' + self.height + ' Weight: ' + self.weight + ' Career Games Played: ' \
-                + self.games + ' Career Points per Game: ' + self.points + ' Career Rebounds per Game: ' \
-                + self.rebounds + ' Career Assists per Game: ' + self.assists
+        return self.name + ' Career Began: ' + self.startyear + ' Career Ended: ' + self.endyear + ' Position: ' \
+                + self.position + ' Height: ' + self.height + ' Weight: ' \
+                + self.weight + ' Career Points:  ' + self.totalpoints
 
     def __repr__(self):
         return self.__str__()
 
 
-
-
-def get_basketball_name(player):
-    baseurl = 'https://www.basketball-reference.com/players/'
-    new_player = player.lower()
-    player_split = new_player.split()
-    if len(player_split[1]) < 5:
-        player_url = baseurl + player_split[len(player_split) - 1][0] + '/' + player_split[1] + player_split[0][0:2] + '01.html'
-    else:
-        player_url = baseurl + player_split[len(player_split) - 1][0] + '/' + player_split[1][0:5] + player_split[0][0:2] + '01.html'
-
-    page_text = make_requests_using_cache(player_url)
-    page_soup = BeautifulSoup(page_text, 'html.parser')
-
-    content_div = page_soup.find(itemtype = 'https://schema.org/Person')
-
-    find_player_name = content_div.find('h1')
-    player_name = find_player_name.text.strip()
-
-    find_player_height = content_div.find(itemprop = 'height')
-    player_height = find_player_height.text.strip()
-
-    find_player_weight = content_div.find(itemprop = 'weight')
-    player_weight = find_player_weight.text.strip()
-
-    #looking at player stats now
-    # gets games, assists points, etc current year and career
-    stats = []
-    stats_div = page_soup.find(class_ = 'p1')
-    stats_num = stats_div.find_all('p')
-    for item in stats_num:
-        get_stats = item.text.strip()
-        stats.append(get_stats)
-
-    #previous_year_games = stats[0]
-    career_games = stats[1]
-    #previous_year_points = stats[2]
-    career_points = stats[3]
-    #previous_year_rebounds = stats[4]
-    career_rebounds = stats[5]
-    #previous_year_assists = stats[6]
-    career_assists = stats[7]
-
-    #crawling to the team of the player
-    crawling_nums = content_div.find_all('p')
-    extra_layer = crawling_nums[4]
-    team_website = extra_layer.find('a')
-    team_name = team_website.text.strip()
-
-    details_page = team_website['href']
-
-    basketball_player_result = []
-
-    details_page_url = 'https://www.basketball-reference.com' + details_page
-    basketball_player = BasketballPlayers(player_name, player_height, player_weight, career_games, career_points, career_rebounds, career_assists, team_name)
-    basketball_player.init_from_details_url(details_page_url)
-    basketball_player_result.append(basketball_player)
-
-    return basketball_player_result
-
-#print (get_basketball_name('Lebron James'))
-
-
-
-DBNAME = 'basketball.db'
 
 def init_db():
     conn = sqlite3.connect(DBNAME)
@@ -166,7 +87,7 @@ def init_db():
     '''
     cur.execute(statement)
     statement = '''
-        DROP TABLE IF EXISTS 'Teams';
+        DROP TABLE IF EXISTS 'Stats';
     '''
     cur.execute(statement)
 
@@ -176,31 +97,91 @@ def init_db():
         CREATE TABLE 'Players' (
             'Id' INTEGER PRIMARY KEY AUTOINCREMENT,
             'Name' TEXT NOT NULL,
+            'StartYear' INTEGER,
+            'EndYear' INTEGER,
+            'Position' TEXT NOT NULL,
             'Height' TEXT NOT NULL,
-            'Weight' TEXT NOT NULL,
-            'GamesPlayed' INTEGER,
-            'Points' INTEGER,
-            'Rebounds' INTEGER,
-            'Assists' INTEGER,
-            'Team' TEXT NOT NULL,
-            'TeamsId' INTEGER
+            'Weight' INTEGER
         );
     '''
     cur.execute(statement)
 
     statement = '''
-        CREATE TABLE 'Teams' (
+        CREATE TABLE 'Stats' (
             'Id' INTEGER PRIMARY KEY AUTOINCREMENT,
-            'Record' TEXT NOT NULL,
-            'Coach' TEXT NOT NULL,
-            'Arena' TEXT NOT NULL,
-            'TeamName' TEXT NOT NULL
+            'GamesPlayed' INTEGER,
+            'AvgPoints' INTEGER,
+            'AvgRebounds' INTEGER,
+            'AvgAssists' INTEGER
         );
     '''
     cur.execute(statement)
     conn.commit()
     conn.close()
 
-# def insert_into_db():
-#     conn = sqlite3.connect(DBNAME)
-#     cur = conn.cursor()
+
+def get_basketball_name(initial):
+    baseurl = 'https://www.basketball-reference.com/players/'
+    initial = initial.lower()
+    new_url = baseurl + initial + '/'
+
+    page_text = make_requests_using_cache(new_url)
+    page_soup = BeautifulSoup(page_text, 'html.parser')
+
+    content_div = page_soup.find(class_ = 'overthrow table_container')
+    table_body = content_div.find('tbody')
+
+    basketball_player_result = []
+
+    conn = sqlite3.connect(DBNAME)
+    cur = conn.cursor()
+    init_db()
+
+    for item in table_body.find_all('tr'):
+        find_player_name = item.find('th')
+        final_find_player_name = find_player_name.find('a')
+        player_name = final_find_player_name.text.strip()
+
+        find_player_info = item.find_all('td')
+
+        stats_list = []
+        for item in find_player_info:
+            get_stats = item.text.strip()
+            stats_list.append(get_stats)
+
+        player_start_year = stats_list[0]
+        player_end_year = stats_list[1]
+        player_position = stats_list[2]
+        player_height = stats_list[3]
+        player_weight = stats_list[4]
+
+        player_extra_details = final_find_player_name['href']
+        player_details_url = 'https://www.basketball-reference.com'+ player_extra_details
+
+
+        basketball_player = BasketballPlayers(player_name, player_start_year, player_end_year, player_position, player_height, player_weight)
+        basketball_player.init_from_details_url(player_details_url)
+        basketball_player_result.append(basketball_player)
+
+
+    for x in basketball_player_result:
+        insertion = (None, x.name, x.startyear, x.endyear, x.position, x.height, x.weight)
+        statement = 'INSERT INTO "Players" '
+        statement += 'Values (?, ?, ?, ?, ?, ?, ?)'
+        cur.execute(statement, insertion)
+
+    for y in basketball_player_result:
+        insertion = (None, y.gamesplayed, y.totalpoints, y.totalrebounds, y.totalassists)
+        statement1 = 'INSERT INTO "Stats" '
+        statement1 += 'Values (?, ?, ?, ?, ?)'
+        cur.execute(statement1, insertion)
+
+
+    conn.commit()
+    conn.close()
+
+
+
+    return basketball_player_result
+
+get_basketball_name('a')
