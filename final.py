@@ -2,6 +2,10 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import sqlite3
+import plotly.plotly as py
+import plotly.graph_objs as go
+import plotly.figure_factory as ff
+
 
 CACHE_FNAME = 'basketball.json'
 DBNAME = 'basketball.db'
@@ -71,7 +75,7 @@ class BasketballPlayers:
     def __str__(self):
         return self.name + ' Career Began: ' + self.startyear + ' Career Ended: ' + self.endyear + ' Position: ' \
                 + self.position + ' Height: ' + self.height + ' Weight: ' \
-                + self.weight + ' Career Points:  ' + self.totalpoints
+                + self.weight + ' Career Points: ' + self.totalpoints
 
     def __repr__(self):
         return self.__str__()
@@ -101,7 +105,8 @@ def init_db():
             'EndYear' INTEGER,
             'Position' TEXT NOT NULL,
             'Height' TEXT NOT NULL,
-            'Weight' INTEGER
+            'Weight' INTEGER,
+            'StatsId' INTEGER
         );
     '''
     cur.execute(statement)
@@ -118,6 +123,7 @@ def init_db():
     cur.execute(statement)
     conn.commit()
     conn.close()
+
 
 
 def get_basketball_name(initial):
@@ -165,9 +171,9 @@ def get_basketball_name(initial):
 
 
     for x in basketball_player_result:
-        insertion = (None, x.name, x.startyear, x.endyear, x.position, x.height, x.weight)
+        insertion = (None, x.name, x.startyear, x.endyear, x.position, x.height, x.weight, 0)
         statement = 'INSERT INTO "Players" '
-        statement += 'Values (?, ?, ?, ?, ?, ?, ?)'
+        statement += 'Values (?, ?, ?, ?, ?, ?, ?, ?)'
         cur.execute(statement, insertion)
 
     for y in basketball_player_result:
@@ -177,6 +183,9 @@ def get_basketball_name(initial):
         cur.execute(statement1, insertion)
 
 
+    statement2 = 'UPDATE Players '
+    statement2 += 'SET StatsId = (SELECT Stats.ID FROM Stats WHERE Players.Id = Stats.Id);'
+    cur.execute(statement2)
     conn.commit()
     conn.close()
 
@@ -184,4 +193,175 @@ def get_basketball_name(initial):
 
     return basketball_player_result
 
-get_basketball_name('a')
+#get_basketball_name('a')
+
+# a command could be like players: list all those players.
+def process_command(command):
+
+    new_command = command.split()
+    conn = sqlite3.connect(DBNAME)
+
+    cur = conn.cursor()
+
+    count = 0
+
+    while (count < len(new_command) and 'players' in new_command):
+        if 'players' in new_command[count]:
+            statement = 'SELECT Name, Stats.AvgPoints, StartYear, EndYear, Position, Height, Weight '
+            statement += 'FROM Players '
+            statement += 'JOIN Stats '
+            statement += 'ON Stats.Id = Players.StatsId '
+
+            if len(new_command) == 1:
+                statement += 'ORDER BY StartYear DESC '
+                statement += 'LIMIT 50'
+                break
+        elif 'position' in new_command[count]:
+            position_abrv = new_command[count][-1:]
+            statement += 'WHERE Position LIKE ' + '"%' + position_abrv + '%"' + ' '
+            if 'position' in new_command[len(new_command) - 1]:
+                statement += 'ORDER BY StartYear DESC '
+                statement += 'LIMIT 50'
+        elif 'new' in new_command[count]:
+            statement += 'ORDER BY StartYear DESC '
+            statement += 'LIMIT 50'
+        elif 'old' in new_command[count]:
+            statement += 'ORDER BY StartYear ASC '
+            statement += 'LIMIT 50'
+        else:
+            pass
+
+        count += 1
+
+    while (count < len(new_command) and 'stats' in new_command):
+        if 'stats' in new_command[count]:
+            statement = 'SELECT Players.Name, GamesPlayed, AvgPoints, AvgRebounds, AvgAssists '
+            statement += 'FROM Stats '
+
+        elif 'name' in new_command[count]:
+            name_abrv = new_command[count].split('=')
+            final_name_abrv = str(name_abrv[1]) + ' ' + str(new_command[count + 1])
+            statement += 'JOIN Players '
+            statement += 'ON Players.StatsId = Stats.Id '
+            statement += 'WHERE Players.Name LIKE ' + '"%' + final_name_abrv + '"' + ' '
+        else:
+            pass
+        count += 1
+
+    cur.execute(statement)
+    cur_list = []
+    for item in cur:
+        cur_list.append(item)
+
+    return cur_list
+
+def create_bar_graph(list_result):
+
+
+    x0 = [item[0] for item in list_result]
+    y0 = [item[1] for item in list_result]
+
+
+    trace0 = go.Bar(
+        x=x0,
+        y=y0,
+        #text=['27% market share', '24% market share', '19% market share'],
+        marker=dict(
+            color='rgb(158,202,225)',
+            line=dict(
+                color='rgb(8,48,107)',
+                width=1.5,
+            )
+        ),
+        opacity=0.6
+    )
+
+    data = [trace0]
+    layout = go.Layout(
+        title='Career Average Points -NBA Players',
+    )
+
+    fig = go.Figure(data=data, layout=layout)
+    py.plot(fig, filename='text-hover-bar')
+
+def create_table(list_result):
+    trace = go.Table(
+        header=dict(values=['NAME', list_result[0][0]]),
+        cells=dict(values=[['GAMES PLAYED', 'AVGPOINTS', 'AVGREBOUNDS', 'AVGASSISTS'],
+                            [list_result[0][1], list_result[0][2], list_result[0][3], list_result[0][4]]]))
+
+
+    data = [trace]
+    py.plot(data, filename = 'basic_table')
+
+# def create_gannt(list_result):
+#
+#     x0 = [item[0] for item in list_result]
+#     x1 = [item[2] for item in list_result]
+#     x2 = [item[3] for item in list_result]
+#
+#     df = [dict(Task=x0, Start=x1, Finish=x2)]
+#
+#     fig = ff.create_gantt(df)
+#     py.plot(fig, filename='gantt-simple-gantt-chart', world_readable=True)
+
+
+
+def interactive_prompt():
+    response = ''
+    while response != 'exit':
+        response = input('Enter a command: ')
+
+        first_word_response = response.split()
+
+        players_count = 0
+        stats_count = 0
+
+        if response == 'exit':
+            print ('bye')
+        # elif 'position' not in first_word_response[1] and 'name' not in first_word_response[1]:
+        #     print ('Command not recognized: ' + response)
+        #     print ('\n')
+        elif response == 'bar graph' and players_count == 1:
+            create_bar_graph(results)
+        elif response == 'create table' and stats_count == 1:
+            create_table(results)
+        elif response == 'create gannt':
+            create_gannt(results)
+        else:
+            try:
+                results = process_command(response)
+                if first_word_response[0] == 'players':
+                    player_column = "{:<25}{:<10}{:<10}{:<10}{:<10}{:<10}{:<10}".format('NAME', 'AVGPOINTS', 'START', 'END', 'POSITION', 'HEIGHT', 'WEIGHT')
+                    print (player_column)
+                    for item in results:
+                        return_str = "{:<25}{:<10}{:<10}{:<10}{:<10}{:<10}{:<10}".format(item[0], item[1], item[2], item[3], item[4], item[5], item[6])
+                        print (return_str)
+                    players_count += 1
+                elif first_word_response[0] == 'stats':
+                    stats_column = "{:<25}{:<15}{:<15}{:<15}{:<15}".format('NAME', 'GAMES PLAYED', 'AVGPOINTS', 'AVGREBOUNDS', 'AVGASSISTS')
+                    print (stats_column)
+                    for item in results:
+                        return_str = "{:<25}{:<15}{:<15}{:<15}{:<15}".format(item[0], item[1], item[2], item[3], item[4])
+                        print (return_str)
+                    stats_count += 1
+                else:
+                    pass
+            except:
+                print ('Command not recognized: ' + response)
+            print ('\n')
+
+
+
+
+
+
+
+
+
+
+
+
+
+if __name__ == '__main__':
+    interactive_prompt()
