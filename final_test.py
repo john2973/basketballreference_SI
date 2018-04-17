@@ -18,7 +18,7 @@ class TestDataBase(unittest.TestCase):
         results = cur.execute(sql)
         result_list = results.fetchall()
         self.assertIn(('Kareem Abdul-Jabbar',), result_list)
-        #self.assertEqual(len(result_list), 158)
+        self.assertEqual(len(result_list), 158)
 
         sql = '''
             SELECT Name, StartYear, EndYear,
@@ -34,7 +34,7 @@ class TestDataBase(unittest.TestCase):
 
         conn.close()
 
-    def test_country_table(self):
+    def test_stats_table(self):
 
         conn = sqlite3.connect(DBNAME)
         cur = conn.cursor()
@@ -48,8 +48,31 @@ class TestDataBase(unittest.TestCase):
         result_list = results.fetchall()
 
         self.assertEqual(len(result_list), 3)
+        self.assertEqual(result_list[0][0], 256)
 
         conn.close()
+class TestPlayerSearch(unittest.TestCase):
+
+    def test_player_search(self):
+        results = process_command('players position=F new')
+        self.assertEqual(results[0][0], 'Bam Adebayo')
+
+        results = process_command('players position=F old')
+        self.assertEqual(results[0][0], 'John Abramovic')
+
+class TestStatsSearch(unittest.TestCase):
+
+    def test_stats_search(self):
+        results = process_command('stats name=Bob Armstrong')
+        self.assertEqual(results[0][1], 19)
+        self.assertEqual(results[0][2], 1.5)
+
+        results = process_command('stats name=Jesse Arnelle')
+        self.assertEqual(results[0][0], 'Jesse Arnelle')
+        self.assertEqual(results[0][1], 31)
+
+
+
 
 
 

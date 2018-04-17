@@ -5,6 +5,7 @@ import sqlite3
 import plotly.plotly as py
 import plotly.graph_objs as go
 import plotly.figure_factory as ff
+import numpy as np
 
 
 CACHE_FNAME = 'basketball.json'
@@ -235,7 +236,7 @@ def process_command(command):
 
     while (count < len(new_command) and 'stats' in new_command):
         if 'stats' in new_command[count]:
-            statement = 'SELECT Players.Name, GamesPlayed, AvgPoints, AvgRebounds, AvgAssists '
+            statement = 'SELECT Players.Name, GamesPlayed, AvgPoints, AvgRebounds, AvgAssists, Players.StartYear, Players.EndYear '
             statement += 'FROM Stats '
 
         elif 'name' in new_command[count]:
@@ -294,28 +295,48 @@ def create_table(list_result):
     data = [trace]
     py.plot(data, filename = 'basic_table')
 
-# def create_gannt(list_result):
+def create_gannt(list_result):
+
+    df = [dict(Task=str(list_result[0][0]), Start=str(list_result[0][5]), Finish=str(list_result[0][6])),
+            dict(Task="Avg Career", Start=str(list_result[0][5]), Finish=str(list_result[0][5] + 5))]
+
+
+    fig = ff.create_gantt(df)
+    py.plot(fig, filename='gantt-simple-gantt-chart', world_readable=True)
+
+# def create_scatter(list_result):
+#     N = 1000
+#     random_x = np.random.randn(N)
+#     random_y = np.random.randn(N)
 #
-#     x0 = [item[0] for item in list_result]
-#     x1 = [item[2] for item in list_result]
-#     x2 = [item[3] for item in list_result]
+# # Create a trace
+#     trace = go.Scatter(
+#         x = random_x,
+#         y = random_y,
+#         mode = 'markers'
+#     )
 #
-#     df = [dict(Task=x0, Start=x1, Finish=x2)]
+#     data = [trace]
 #
-#     fig = ff.create_gantt(df)
-#     py.plot(fig, filename='gantt-simple-gantt-chart', world_readable=True)
+# # Plot and embed in ipython notebook!
+#     py.plot(data, filename='basic-scatter')
+
+
 
 
 
 def interactive_prompt():
     response = ''
+    players_count = 0
+    stats_count = 0
+
+    # player_input = input('Enter a players last initial to see data on NBA players with the last initial ')
+    # get_basketball_name(player_input)
+
     while response != 'exit':
         response = input('Enter a command: ')
 
         first_word_response = response.split()
-
-        players_count = 0
-        stats_count = 0
 
         if response == 'exit':
             print ('bye')
@@ -324,10 +345,14 @@ def interactive_prompt():
         #     print ('\n')
         elif response == 'bar graph' and players_count == 1:
             create_bar_graph(results)
+            players_count = 0
         elif response == 'create table' and stats_count == 1:
             create_table(results)
-        elif response == 'create gannt':
+            #stats_count = 0
+        elif response == 'create gannt' and stats_count == 1:
             create_gannt(results)
+            #stats_count = 0
+            print ('\n')
         else:
             try:
                 results = process_command(response)
