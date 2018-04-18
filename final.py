@@ -99,7 +99,7 @@ def init_db():
     conn.commit()
 
     statement = '''
-        CREATE TABLE 'Players' (
+        CREATE TABLE IF NOT EXISTS 'Players' (
             'Id' INTEGER PRIMARY KEY AUTOINCREMENT,
             'Name' TEXT NOT NULL,
             'StartYear' INTEGER,
@@ -112,8 +112,10 @@ def init_db():
     '''
     cur.execute(statement)
 
+
+
     statement = '''
-        CREATE TABLE 'Stats' (
+        CREATE TABLE IF NOT EXISTS 'Stats' (
             'Id' INTEGER PRIMARY KEY AUTOINCREMENT,
             'GamesPlayed' INTEGER,
             'AvgPoints' INTEGER,
@@ -194,6 +196,7 @@ def get_basketball_name(initial):
 
     return basketball_player_result
 
+
 #get_basketball_name('a')
 
 # a command could be like players: list all those players.
@@ -256,16 +259,65 @@ def process_command(command):
 
     return cur_list
 
+# def create_bar_graph(list_result):
+#
+#
+#     x0 = [item[0] for item in list_result]
+#     y0 = [item[1] for item in list_result]
+#
+#     # players_avg = process_command('players')
+#     #
+#     # total_points = 0
+#     #
+#     # for item in players_avg:
+#     #     total_points = total_points + float(item[1])
+#     #
+#     # player_list_point_avg = total_points / len(players_avg)
+#     # x0 = item[0][2]
+#     # y0 = player_list_point_avg
+#
+#
+#     trace0 = go.Bar(
+#         x=x0,
+#         y=y0,
+#         #text=['27% market share', '24% market share', '19% market share'],
+#         marker=dict(
+#             color='rgb(158,202,225)',
+#             line=dict(
+#                 color='rgb(8,48,107)',
+#                 width=1.5,
+#             )
+#         ),
+#         opacity=0.6
+#     )
+#
+#     data = [trace0]
+#     layout = go.Layout(
+#         title='Career Average Points -NBA Players',
+#     )
+#
+#     fig = go.Figure(data=data, layout=layout)
+#     py.plot(fig, filename='text-hover-bar')
+
+
 def create_bar_graph(list_result):
 
+    players_avg = process_command('players')
 
-    x0 = [item[0] for item in list_result]
-    y0 = [item[1] for item in list_result]
+    total_points = 0
+    item_count = 0
+
+    for item in players_avg:
+        total_points = total_points + float(item[1])
+        item_count += 1
+
+    player_list_point_avg = total_points / item_count
+    y0 = player_list_point_avg
 
 
     trace0 = go.Bar(
-        x=x0,
-        y=y0,
+        x=[list_result[0][0], 'Player Averages'],
+        y=[list_result[0][2], y0],
         #text=['27% market share', '24% market share', '19% market share'],
         marker=dict(
             color='rgb(158,202,225)',
@@ -279,11 +331,13 @@ def create_bar_graph(list_result):
 
     data = [trace0]
     layout = go.Layout(
-        title='Career Average Points -NBA Players',
+        title=list_result[0][0] + ' PointsPerGame Versus Player Database Averages',
     )
 
     fig = go.Figure(data=data, layout=layout)
     py.plot(fig, filename='text-hover-bar')
+
+
 
 def create_table(list_result):
     trace = go.Table(
@@ -297,6 +351,8 @@ def create_table(list_result):
 
 def create_gannt(list_result):
 
+
+
     df = [dict(Task=str(list_result[0][0]), Start=str(list_result[0][5]), Finish=str(list_result[0][6])),
             dict(Task="Avg Career", Start=str(list_result[0][5]), Finish=str(list_result[0][5] + 5))]
 
@@ -304,22 +360,31 @@ def create_gannt(list_result):
     fig = ff.create_gantt(df)
     py.plot(fig, filename='gantt-simple-gantt-chart', world_readable=True)
 
-# def create_scatter(list_result):
-#     N = 1000
-#     random_x = np.random.randn(N)
-#     random_y = np.random.randn(N)
-#
-# # Create a trace
-#     trace = go.Scatter(
-#         x = random_x,
-#         y = random_y,
-#         mode = 'markers'
-#     )
-#
-#     data = [trace]
-#
-# # Plot and embed in ipython notebook!
-#     py.plot(data, filename='basic-scatter')
+def create_pie(list_result):
+    labels = ['Guards','Forwards', 'Centers']
+
+    #position_type = process_command('players')
+    guard_count = 0
+    foward_count = 0
+    center_count = 0
+
+    for items in list_result:
+        if 'G' in items[4]:
+            guard_count += 1
+        elif 'F' in items[4]:
+            foward_count += 1
+        elif 'C' in items[4]:
+            center_count += 1
+        else:
+            pass
+
+
+
+    values = [guard_count, foward_count, center_count]
+
+    trace = go.Pie(labels=labels, values=values)
+
+    py.plot([trace], filename='basic_pie_chart')
 
 
 
@@ -327,8 +392,8 @@ def create_gannt(list_result):
 
 def interactive_prompt():
     response = ''
-    players_count = 0
     stats_count = 0
+    player_count = 0
 
     # player_input = input('Enter a players last initial to see data on NBA players with the last initial ')
     # get_basketball_name(player_input)
@@ -343,16 +408,23 @@ def interactive_prompt():
         # elif 'position' not in first_word_response[1] and 'name' not in first_word_response[1]:
         #     print ('Command not recognized: ' + response)
         #     print ('\n')
-        elif response == 'bar graph' and players_count == 1:
+        elif response == 'bar graph' and stats_count >= 1:
             create_bar_graph(results)
-            players_count = 0
-        elif response == 'create table' and stats_count == 1:
-            create_table(results)
             #stats_count = 0
-        elif response == 'create gannt' and stats_count == 1:
+
+        elif response == 'create table' and stats_count >= 1:
+            create_table(results)
+            print ('\n')
+            #stats_count = 0
+        elif response == 'create gannt' and stats_count >= 1:
             create_gannt(results)
             #stats_count = 0
             print ('\n')
+        elif response == 'create pie' and stats_count == 0:
+            create_pie(results)
+            print ('\n')
+            #player_count = 0
+
         else:
             try:
                 results = process_command(response)
@@ -362,7 +434,7 @@ def interactive_prompt():
                     for item in results:
                         return_str = "{:<25}{:<10}{:<10}{:<10}{:<10}{:<10}{:<10}".format(item[0], item[1], item[2], item[3], item[4], item[5], item[6])
                         print (return_str)
-                    players_count += 1
+                    #players_count += 1
                 elif first_word_response[0] == 'stats':
                     stats_column = "{:<25}{:<15}{:<15}{:<15}{:<15}".format('NAME', 'GAMES PLAYED', 'AVGPOINTS', 'AVGREBOUNDS', 'AVGASSISTS')
                     print (stats_column)
@@ -375,14 +447,6 @@ def interactive_prompt():
             except:
                 print ('Command not recognized: ' + response)
             print ('\n')
-
-
-
-
-
-
-
-
 
 
 

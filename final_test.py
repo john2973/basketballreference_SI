@@ -7,6 +7,10 @@ class TestBasketballSearch(unittest.TestCase):
         basketball_list = get_basketball_name('a')
 
         self.assertEqual(str(basketball_list[0]), 'Alaa Abdelnaby Career Began: 1991 Career Ended: 1995 Position: F-C Height: 6-10 Weight: 240 Career Points: 5.7')
+        self.assertEqual(basketball_list[0].name, 'Alaa Abdelnaby')
+        self.assertEqual(basketball_list[0].startyear, '1991')
+        self.assertEqual(basketball_list[0].endyear, '1995')
+
 
 class TestDataBase(unittest.TestCase):
 
@@ -56,9 +60,11 @@ class TestPlayerSearch(unittest.TestCase):
     def test_player_search(self):
         results = process_command('players position=F new')
         self.assertEqual(results[0][0], 'Bam Adebayo')
+        self.assertEqual(results[0][2], 2018)
 
         results = process_command('players position=F old')
         self.assertEqual(results[0][0], 'John Abramovic')
+        self.assertEqual(results[0][2], 1947)
 
 class TestStatsSearch(unittest.TestCase):
 
@@ -70,7 +76,6 @@ class TestStatsSearch(unittest.TestCase):
         results = process_command('stats name=Jesse Arnelle')
         self.assertEqual(results[0][0], 'Jesse Arnelle')
         self.assertEqual(results[0][1], 31)
-
 
 
 
