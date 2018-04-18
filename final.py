@@ -395,8 +395,12 @@ def interactive_prompt():
     stats_count = 0
     player_count = 0
 
-    # player_input = input('Enter a players last initial to see data on NBA players with the last initial ')
-    # get_basketball_name(player_input)
+    player_input = input('Enter a players last initial to see data on NBA players with the last initial: ')
+    get_basketball_name(player_input)
+    print ('\n')
+    print ('Sucessfully scraped information about players with the last initial: ' + player_input)
+    print ('Please enter specific commands to obtain more information about those players, enter "help" if you need assitance, "exit" to quit')
+    print ('\n')
 
     while response != 'exit':
         response = input('Enter a command: ')
@@ -408,6 +412,13 @@ def interactive_prompt():
         # elif 'position' not in first_word_response[1] and 'name' not in first_word_response[1]:
         #     print ('Command not recognized: ' + response)
         #     print ('\n')
+        elif response == 'help':
+            print ('Enter "bar graph" to see a bar graph display')
+            print ('Enter "create table" to see a formated table display')
+            print ('Enter "create gannt" to see a gannt chart display')
+            print ('Enter "create pie" to see a pie chart display')
+            print ('\n')
+
         elif response == 'bar graph' and stats_count >= 1:
             create_bar_graph(results)
             #stats_count = 0
