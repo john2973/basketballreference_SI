@@ -435,6 +435,14 @@ def interactive_prompt():
             create_pie(results)
             print ('\n')
             #player_count = 0
+        elif first_word_response[0] != 'players' and first_word_response[0] != 'stats' and first_word_response[0] != 'create' and first_word_response[0] != 'bar':
+            print ('Command not recognized: ' + response)
+            print ('\n')
+
+        elif (len(first_word_response) > 1 and first_word_response[1] != 'pie' and first_word_response[1] != 'gannt' and first_word_response[1] != 'table' \
+                and first_word_response[1] != 'graph' and 'position' not in first_word_response[1] and 'name' not in first_word_response[1]):
+            print ('Command not recognized: ' + response)
+            print ('\n')
 
         else:
             try:
